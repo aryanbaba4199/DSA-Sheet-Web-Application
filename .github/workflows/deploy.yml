@@ -20,14 +20,11 @@ jobs:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🔍 Debug repo layout (show where Dockerfiles are)
+      - name: 🔍 Debug repo layout
         run: |
-          echo "PWD: $(pwd)"
-          echo "Repo root listing:"
+          echo "Repo root: $(pwd)"
           ls -la
-          echo "backend listing:"
           ls -la backend || true
-          echo "frontend listing:"
           ls -la frontend || true
 
       - name: 🟢 Setup Node.js
@@ -45,21 +42,19 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: 🐳 Configure Docker to use gcloud as a credential helper
+      - name: 🐳 Configure Docker to use gcloud as credential helper
         run: gcloud auth configure-docker asia-south1-docker.pkg.dev
 
-      # --- Backend: install deps (optional) ---
-      - name: 📦 Install backend dependencies (optional)
+      # --- Backend Deployment ---
+      - name: 📦 Install backend dependencies
         working-directory: backend
         run: npm ci
 
-      - name: 🐳 Build and Push Backend Docker Image
+      - name: 🐳 Build & Push Backend Docker Image
         run: |
-          # explicit Dockerfile path and explicit build context (./backend)
-          docker build -f ./backend/Dockerfile \
+          docker build -f backend/Dockerfile \
             -t asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }} \
-            ./backend
-
+            backend
           docker push asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }}
 
       - name: 🚀 Deploy Backend to Cloud Run
@@ -71,8 +66,8 @@ jobs:
             --allow-unauthenticated \
             --set-env-vars MONGODB_URI=${{ secrets.MONGODB_URI }},JWT_KEY=${{ secrets.JWT_SECRET }}
 
-      # --- Frontend ---
-      - name: 📦 Install frontend dependencies (optional)
+      # --- Frontend Deployment ---
+      - name: 📦 Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
@@ -80,12 +75,11 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      - name: 🐳 Build and Push Frontend Docker Image
+      - name: 🐳 Build & Push Frontend Docker Image
         run: |
-          docker build -f ./frontend/Dockerfile \
+          docker build -f frontend/Dockerfile \
             -t asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_FRONTEND_SERVICE_NAME }}:${{ github.sha }} \
-            ./frontend
-
+            frontend
           docker push asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_FRONTEND_SERVICE_NAME }}:${{ github.sha }}
 
       - name: 🚀 Deploy Frontend to Cloud Run
