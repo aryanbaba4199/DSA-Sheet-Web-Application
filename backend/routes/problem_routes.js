@@ -4,24 +4,24 @@ const router = express.Router();
 const {
   create_problem,
   get_problems,
-  update_problem,
-  delete_problem,
   get_problem_by_id,
+  update_problem_status,
+  get_user_progress
 } = require("../controller/problem_controller");
+const auth_user = require("../middleware/authuser")
 
 
-router.post("/", create_problem);
+router.post("/create", create_problem);
 
 
-router.get("/", get_problems);
+router.get("/", auth_user, get_problems);
+
+router.get("/progress", auth_user,  get_user_progress)
+
+router.get("/:problemId", auth_user, get_problem_by_id);
+
+router.put("/complete-topic", auth_user,  update_problem_status)
 
 
-router.get("/:problemId", get_problem_by_id);
-
-
-router.put("/", update_problem);
-
-
-router.delete("/", delete_problem);
 
 module.exports = router;

@@ -1,11 +1,12 @@
 
 const express = require("express");
 const router = express.Router();
-const { register, login, update_user } = require("../controller/userController");
+const { register, login, update_user, user_me } = require("../controller/userController");
 const authuser = require("../middleware/authuser");
 
+router.get("/me", authuser, user_me);
 
-router.post("/register", register);
+router.post("/signup", register);
 
 router.post("/login", login);
 

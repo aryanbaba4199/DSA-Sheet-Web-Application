@@ -1,0 +1,85 @@
+name: CI/CD for MERN Stack on Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+      CLOUD_RUN_BACKEND_SERVICE_NAME: ${{ secrets.CLOUD_RUN_BACKEND_SERVICE_NAME }}
+      CLOUD_RUN_FRONTEND_SERVICE_NAME: ${{ secrets.CLOUD_RUN_FRONTEND_SERVICE_NAME }}
+      GCP_ARTIFACT_REGISTRY_REPO: ${{ secrets.GCP_ARTIFACT_REGISTRY_REPO }}
+
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: 🔑 Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: ☁️ Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: 🐳 Configure Docker to use gcloud as a credential helper
+        run: gcloud auth configure-docker asia-southeast1-docker.pkg.dev
+
+      # --- Backend Deployment ---
+      - name: 📦 Install backend dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: 🐳 Build and Push Backend Docker Image
+        working-directory: backend
+        run: |
+          docker build -f Dockerfile -t asia-southeast1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }} .
+          docker push asia-southeast1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }}
+
+      - name: 🚀 Deploy Backend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }} \
+            --image asia-southeast1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }} \
+            --region asia-southeast1 \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "MONGODB_URI=${{ secrets.MONGODB_URI }},JWT_KEY=${{ secrets.JWT_SECRET }},
+
+      # --- Frontend Deployment ---
+      - name: 📦 Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: ⚙️ Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: 🐳 Build and Push Frontend Docker Image
+        working-directory: frontend
+        run: |
+          docker build -t asia-southeast1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_FRONTEND_SERVICE_NAME }}:${{ github.sha }} .
+          docker push asia-southeast1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_FRONTEND_SERVICE_NAME }}:${{ github.sha }}
+
+      - name: 🚀 Deploy Frontend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.CLOUD_RUN_FRONTEND_SERVICE_NAME }} \
+            --image asia-southeast1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_FRONTEND_SERVICE_NAME }}:${{ github.sha }} \
+            --region asia-southeast1 \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "VITE_APP_CLOUD_NAME_CLOUDINARY=${}"
