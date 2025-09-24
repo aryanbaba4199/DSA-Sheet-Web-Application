@@ -105,7 +105,10 @@ const Topics = () => {
   }, [topics, user?.completedProblems]);
 
   const handleCheckboxChange = useCallback(
-    async (topicId, problemId) => {
+    async (topicId, problemId, currentChecked) => {
+      const newChecked = !currentChecked;
+      const newStatus = newChecked ? "Done" : "Pending";
+
       setTopics((prevTopics) => {
         const newTopics = prevTopics.map((t) => {
           if (t._id.toString() !== topicId) return t;
@@ -114,9 +117,6 @@ const Topics = () => {
             ...ch,
             problems: ch.problems.map((p) => {
               if (p._id.toString() !== problemId) return p;
-
-              const newChecked = !p.checked;
-              const newStatus = newChecked ? "Done" : "Pending";
 
               return {
                 ...p,
@@ -136,16 +136,10 @@ const Topics = () => {
           };
         });
 
-        const updatedProblem = newTopics
-          .find((t) => t._id.toString() === topicId)
-          ?.chapters.flatMap((ch) => ch.problems)
-          .find((p) => p._id.toString() === problemId);
-
-        if (updatedProblem) {
-          updateProblemStatus(problemId, updatedProblem.status).catch(() => {
-            getTopics();
-          });
-        }
+        // Note: We're passing newStatus directly since it's computed from the toggle
+        updateProblemStatus(problemId, newStatus).catch(() => {
+          getTopics();
+        });
 
         return newTopics;
       });
@@ -273,7 +267,7 @@ const Topics = () => {
                               <TableCell padding="checkbox">
                                 <Checkbox
                                   checked={problem.checked}
-                                  onChange={() => handleCheckboxChange(topic._id, problem._id)}
+                                  onChange={() => handleCheckboxChange(topic._id, problem._id, problem.checked)}
                                   color="primary"
                                 />
                               </TableCell>

@@ -37,7 +37,7 @@ const TabMenu = () => {
   };
 
   const menuItems = [
-    { icon: MdPerson, label: 'Profile', path: '/profile' },
+    { icon: MdPerson, label: 'Profile', path: '/' },
     { icon: MdMenuBook, label: 'Topics', path: '/topics' },
     { icon: MdTrendingUp, label: 'Progress', path: '/progress' },
   ];
@@ -60,6 +60,7 @@ const TabMenu = () => {
           variant="h6"
           component="div"
           sx={{ flexGrow: 1, fontWeight: 'bold' }}
+          onClick={()=> navigate('/')}
         >
           Dashboard
         </Typography>
