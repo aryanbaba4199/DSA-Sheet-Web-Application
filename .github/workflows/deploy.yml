@@ -46,8 +46,9 @@ jobs:
         run: npm install
 
       - name: 🐳 Build and Push Backend Docker Image
+        working-directory: backend
         run: |
-            docker build -f backend/Dockerfile -t asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }} backend
+            docker build -t asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }} .
             docker push asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }}
 
       - name: 🚀 Deploy Backend to Cloud Run
