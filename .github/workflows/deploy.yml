@@ -2,9 +2,11 @@ name: CI/CD for MERN Stack on Cloud Run
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build-and-deploy:
@@ -19,13 +21,6 @@ jobs:
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v3
-
-      - name: 🔍 Debug repo layout
-        run: |
-          echo "Repo root: $(pwd)"
-          ls -la
-          ls -la backend || true
-          ls -la frontend || true
 
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v3
@@ -42,19 +37,18 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: 🐳 Configure Docker to use gcloud as credential helper
+      - name: 🐳 Configure Docker to use gcloud as a credential helper
         run: gcloud auth configure-docker asia-south1-docker.pkg.dev
 
       # --- Backend Deployment ---
       - name: 📦 Install backend dependencies
         working-directory: backend
-        run: npm ci
+        run: npm install
 
-      - name: 🐳 Build & Push Backend Docker Image
+      - name: 🐳 Build and Push Backend Docker Image
+        working-directory: backend
         run: |
-          docker build -f backend/Dockerfile \
-            -t asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }} \
-            backend
+          docker build -f Dockerfile -t asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }} .
           docker push asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_BACKEND_SERVICE_NAME }}:${{ github.sha }}
 
       - name: 🚀 Deploy Backend to Cloud Run
@@ -64,22 +58,21 @@ jobs:
             --region asia-south1 \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars MONGODB_URI=${{ secrets.MONGODB_URI }},JWT_KEY=${{ secrets.JWT_SECRET }}
+            --set-env-vars "MONGODB_URI=${{ secrets.MONGODB_URI }},JWT_KEY=${{ secrets.JWT_SECRET }},
 
       # --- Frontend Deployment ---
       - name: 📦 Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm install
 
       - name: ⚙️ Build frontend
         working-directory: frontend
         run: npm run build
 
-      - name: 🐳 Build & Push Frontend Docker Image
+      - name: 🐳 Build and Push Frontend Docker Image
+        working-directory: frontend
         run: |
-          docker build -f frontend/Dockerfile \
-            -t asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_FRONTEND_SERVICE_NAME }}:${{ github.sha }} \
-            frontend
+          docker build -t asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_FRONTEND_SERVICE_NAME }}:${{ github.sha }} .
           docker push asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_FRONTEND_SERVICE_NAME }}:${{ github.sha }}
 
       - name: 🚀 Deploy Frontend to Cloud Run
@@ -89,4 +82,4 @@ jobs:
             --region asia-south1 \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars VITE_APP_CLOUD_NAME_CLOUDINARY=${{ secrets.VITE_APP_CLOUD_NAME_CLOUDINARY }}
+            --set-env-vars "VITE_APP_CLOUD_NAME_CLOUDINARY=${}"
